@@ -1138,6 +1138,9 @@ canvas{display:block}
 <script>
 'use strict';
 
+// Read case type from portal launch URL (?caseType=active|closed)
+const caseType = new URLSearchParams(window.location.search).get('caseType') || 'active';
+
 /* ─────────────────────────────────────────────────────────
    DATA — PI/WC Aligned 4Ps Stages (exact text, no changes)
 ───────────────────────────────────────────────────────── */
@@ -1752,8 +1755,9 @@ function buildResults() {
 
     // Notify Case Clarity portal that HSI is fully complete
     if (window.opener && !window.opener.closed) {
+      // Notify Case Clarity portal that HSI is fully complete for the selected case type
       window.opener.postMessage(
-        { type: 'INSTRUMENT_COMPLETE', instrument: 'HSI' },
+        { type: 'INSTRUMENT_COMPLETE', instrument: 'HSI', caseType },
         '*'
       );
     }
