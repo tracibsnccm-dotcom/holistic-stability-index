@@ -2013,9 +2013,9 @@ function goToNext() {
       { type: 'GO_TO_NEXT_ASSESSMENT', instrument: 'HSI', caseType },
       '*'
     );
-    window.opener.focus();
+    // Do NOT close this tab — portal needs to call window.open() for next tool
+    // before this context is destroyed. Portal will open the next tool.
   }
-  window.close();
 }
 function returnToDashboard() {
   if (window.opener && !window.opener.closed) { window.opener.focus(); }
