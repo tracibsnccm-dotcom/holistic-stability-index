@@ -1071,8 +1071,8 @@ canvas{display:block}
     </div>
 
     <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e0ddd4;display:flex;gap:12px;justify-content:center;">
-      <button onclick="if(window.opener&&!window.opener.closed){window.opener.focus();}window.close();" style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:10px 24px;background:#b09837;color:#fff;border:none;cursor:pointer;">Continue to Next Assessment</button>
-      <button onclick="if(window.opener&&!window.opener.closed){window.opener.focus();}window.close();" style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:10px 24px;background:#fff;color:#b09837;border:1.5px solid #b09837;cursor:pointer;">Return to Dashboard</button>
+      <button onclick="goToNext();" style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:10px 24px;background:#b09837;color:#fff;border:none;cursor:pointer;">Continue to Next Assessment</button>
+      <button onclick="returnToDashboard();" style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:10px 24px;background:#fff;color:#b09837;border:1.5px solid #b09837;cursor:pointer;">Return to Dashboard</button>
     </div>
   </div>
 </div>
@@ -2006,6 +2006,21 @@ window.addEventListener('resize',()=>{
 window.addEventListener('load',()=>{
   requestAnimationFrame(()=>requestAnimationFrame(drawMiniSlab));
 });
+
+function goToNext() {
+  if (window.opener && !window.opener.closed) {
+    window.opener.postMessage(
+      { type: 'GO_TO_NEXT_ASSESSMENT', instrument: 'HSI', caseType },
+      '*'
+    );
+    window.opener.focus();
+  }
+  window.close();
+}
+function returnToDashboard() {
+  if (window.opener && !window.opener.closed) { window.opener.focus(); }
+  window.close();
+}
 </script>
 </body>
 </html>
