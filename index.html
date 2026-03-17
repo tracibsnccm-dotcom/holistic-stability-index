@@ -1749,6 +1749,14 @@ function buildResults() {
     drawMainSlab(intrinsic, extrinsic);
     buildDestabResult(destab);
     buildInterp(intrinsic, pCode, extrinsic, destab);
+
+    // Notify Case Clarity portal that HSI is fully complete
+    if (window.opener && !window.opener.closed) {
+      window.opener.postMessage(
+        { type: 'INSTRUMENT_COMPLETE', instrument: 'HSI' },
+        '*'
+      );
+    }
   });
 }
 
