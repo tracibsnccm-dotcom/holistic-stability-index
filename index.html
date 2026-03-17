@@ -1077,60 +1077,6 @@ canvas{display:block}
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════
-     UPGRADE
-══════════════════════════════════════════ -->
-<div id="sc-upgrade" class="screen">
-  <nav class="nav">
-    <div class="nav-brand">Holistic Stability Index<span class="g">™</span></div>
-    <div class="nav-pill">Upgrade</div>
-  </nav>
-  <div class="upgrade-wrap">
-    <div class="upgrade-hdr">
-      <div class="eyebrow">Continue Your Analysis</div>
-      <div class="upgrade-title">Continue Evaluating<br>Recovery Stability</div>
-      <p class="upgrade-body">Upgrade to continue generating Holistic Stability Analyses™ for your cases.</p>
-    </div>
-    <div class="plans-grid">
-      <div class="plan-card">
-        <div class="plan-name">Individual</div>
-        <div class="plan-price">$699</div>
-        <div class="plan-per">per analysis</div>
-        <div class="plan-divider"></div>
-        <div class="plan-feat">Single analysis. For occasional case evaluation with no ongoing commitment.</div>
-        <button class="btn-plan">Select Plan</button>
-      </div>
-      <div class="plan-card">
-        <div class="plan-name">Starter</div>
-        <div class="plan-price">$899</div>
-        <div class="plan-per">per month</div>
-        <div class="plan-divider"></div>
-        <div class="plan-feat">Up to 3 analyses per month. Ideal for smaller caseloads.</div>
-        <button class="btn-plan">Select Plan</button>
-      </div>
-      <div class="plan-card pop">
-        <div class="plan-badge">Most Popular</div>
-        <div class="plan-name">Professional</div>
-        <div class="plan-price">$1,500</div>
-        <div class="plan-per">per month</div>
-        <div class="plan-divider"></div>
-        <div class="plan-feat">Up to 9 analyses per month. Best for active litigation practices.</div>
-        <button class="btn-plan">Select Plan</button>
-      </div>
-      <div class="plan-card">
-        <div class="plan-name">Litigation</div>
-        <div class="plan-price">$1,995</div>
-        <div class="plan-per">per month</div>
-        <div class="plan-divider"></div>
-        <div class="plan-feat">Unlimited analyses. Full access for high-volume litigation teams.</div>
-        <button class="btn-plan">Select Plan</button>
-      </div>
-    </div>
-    <div class="upgrade-back">
-      <button class="btn-ghost" onclick="showScreen('sc-results')">← Return to Results</button>
-    </div>
-  </div>
-</div>
 
 <!-- ══════════════════════════════════════════
      JAVASCRIPT
@@ -1444,10 +1390,13 @@ function startAssessment() {
 ───────────────────────────────────────────────────────── */
 function navNext() {
   if (step<=3) {
-    if (A[step][qIdx]===undefined) { toast('Please select a stage before continuing.'); return; }
-    const lastQ = DOMAINS[step].questions.length - 1;
-    if (qIdx < lastQ) { qIdx++; render(); return; }
-    step++; qIdx=0;
+    // Grouped view: all 5 questions shown at once — validate all answered
+    const unanswered = DOMAINS[step].questions.findIndex((_, qi) => A[step][qi] === undefined);
+    if (unanswered !== -1) {
+      toast(`Please answer all questions for ${DOMAINS[step].title} before continuing.`);
+      return;
+    }
+    step++;
   } else if (step===4) {
     for (let i=0;i<SOCIAL_DRIVERS.length;i++) {
       if (A[4][i]===undefined) { toast('Please rate all Social Drivers before continuing.'); return; }
@@ -1464,12 +1413,10 @@ function navNext() {
 }
 
 function navBack() {
-  if (step===0 && qIdx===0) { showScreen('sc-intro'); return; }
-  if (step<=3) {
-    if (qIdx>0) { qIdx--; }
-    else { step--; qIdx=DOMAINS[step].questions.length-1; }
-  } else if (step===4) { step=3; qIdx=DOMAINS[3].questions.length-1; }
-  else if (step===5)   { step=4; }
+  if (step===0) { showScreen('sc-intro'); return; }
+  if (step<=3) { step--; }
+  else if (step===4) { step=3; }
+  else if (step===5) { step=4; }
   render();
   window.scrollTo({top:0});
 }
@@ -1514,81 +1461,63 @@ function updatePill() {
 }
 
 /* ─────────────────────────────────────────────────────────
-   RENDER DOMAIN QUESTION
+   RENDER DOMAIN — all questions grouped under one P section
 ───────────────────────────────────────────────────────── */
 function renderQuestion() {
   const dom = DOMAINS[step];
-  const q   = dom.questions[qIdx];
   const stg = STAGES[dom.key];
-  const saved = A[step][qIdx];
-  const total = dom.questions.length;
-  const pct   = Math.round((qIdx/total)*100);
-  const globalQ = step*5 + qIdx + 1;
 
-  // Build stage options HTML — each with info icon for inline description
-  const optsHtml = stg.map(s => {
-    const buls = s.bullets.map(b=>`<li>${b}</li>`).join('');
-    return `
-    <div class="stage-opt${saved===s.v?' sel':''}"
-         onclick="pickStage(${s.v},this)">
-      <div class="stage-num">${s.v}</div>
-      <div class="stage-lbl">${s.label}</div>
-      <button class="stage-info-btn" onclick="toggleStageDesc(event,'sid-${s.v}')" title="View stage description">i</button>
-      <div class="stage-radio">
-        <div class="radio-ring"><div class="radio-dot"></div></div>
-      </div>
-    </div>
-    <div class="stage-inline-desc" id="sid-${s.v}">
-      <ul>${buls}</ul>
-    </div>`;
-  }).join('');
-
-  // Build descriptions panel HTML
-  const descHtml = stg.map(s => `
-    <div class="desc-row">
-      <div class="desc-score">${s.v}</div>
-      <div class="desc-content">
-        <div class="desc-stage-title">${s.label}</div>
-        <ul class="desc-bullets">
-          ${s.bullets.map(b=>`<li>${b}</li>`).join('')}
-        </ul>
-      </div>
-    </div>`).join('');
-
-  const safeguard = (step===0 && qIdx===0) ? `
+  const safeguard = (step === 0) ? `
     <div class="safeguard">
       If more than one stage appears applicable, select the lowest stage that reflects the individual's current condition. The lowest domain score determines overall intrinsic stability.
     </div>` : '';
+
+  // Build one block per question in this domain
+  const questionsHtml = dom.questions.map((q, qi) => {
+    const saved = A[step][qi];
+    const optsHtml = stg.map(s => {
+      const buls = s.bullets.map(b => `<li>${b}</li>`).join('');
+      return `
+      <div class="stage-opt${saved === s.v ? ' sel' : ''}"
+           onclick="pickStageGrouped(${s.v}, this, ${qi})">
+        <div class="stage-num">${s.v}</div>
+        <div class="stage-lbl">${s.label}</div>
+        <button class="stage-info-btn" onclick="toggleStageDesc(event,'sid-${step}-${qi}-${s.v}')" title="View stage description">i</button>
+        <div class="stage-radio"><div class="radio-ring"><div class="radio-dot"></div></div></div>
+      </div>
+      <div class="stage-inline-desc" id="sid-${step}-${qi}-${s.v}">
+        <ul>${buls}</ul>
+      </div>`;
+    }).join('');
+
+    return `
+    <div class="q-view" style="margin-bottom:32px; padding-bottom:28px; border-bottom:1px solid var(--surf-line);">
+      <div class="q-num">Question ${qi + 1} of ${dom.questions.length}</div>
+      <div class="q-title">${q.title}</div>
+      <div class="q-text">${q.text}</div>
+      <div class="stage-opts" id="stageOpts-${qi}">${optsHtml}</div>
+    </div>`;
+  }).join('');
 
   document.getElementById('assessContent').innerHTML = `
     <div class="d-header">
       <div class="d-badge">${dom.badge}</div>
       <div class="d-title">${dom.title}</div>
       <div class="d-progress">
-        <span>Question ${qIdx+1} of ${total}</span>
-        <div class="d-pbar"><div class="d-pfill" style="width:${pct}%"></div></div>
-        <span>Step ${step+1} of 4</span>
+        <span>All ${dom.questions.length} questions</span>
+        <div class="d-pbar"><div class="d-pfill" style="width:${Math.round((step/4)*100)}%"></div></div>
+        <span>Step ${step + 1} of 4</span>
       </div>
     </div>
     ${safeguard}
-    <div class="q-view">
-      <div class="q-num">Question ${globalQ} of 20</div>
-      <div class="q-title">${q.title}</div>
-      <div class="q-text">${q.text}</div>
-      <div class="stage-opts" id="stageOpts">${optsHtml}</div>
-      <div class="desc-toggle-wrap">
-        <button class="desc-toggle" id="descToggleBtn" onclick="toggleDescPanel()">
-          View Stage Descriptions <span class="arr">▾</span>
-        </button>
-        <div class="desc-panel" id="descPanel">${descHtml}</div>
-      </div>
-    </div>`;
+    ${questionsHtml}`;
 }
 
-function pickStage(val, el) {
-  A[step][qIdx] = val;
+function pickStageGrouped(val, el, qi) {
+  A[step][qi] = val;
+  const opts = el.closest(`#stageOpts-${qi}`) || el.parentElement;
+  if (opts) opts.querySelectorAll('.stage-opt').forEach(o => o.classList.remove('sel'));
   const opt = el.closest('.stage-opt') || el;
-  document.querySelectorAll('#stageOpts .stage-opt').forEach(o=>o.classList.remove('sel'));
   opt.classList.add('sel');
 }
 
