@@ -132,6 +132,15 @@ canvas{display:block}
   padding:0;transition:color .2s;
 }
 .btn-ghost:hover{color:var(--gold)}
+.btn-primary{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  background:var(--gold);color:var(--white);
+  border:none;border-radius:var(--r);
+  font-family:var(--fb);font-size:12px;font-weight:600;
+  letter-spacing:0.13em;text-transform:uppercase;
+  padding:0 30px;height:48px;cursor:pointer;transition:background .2s;
+}
+.btn-primary:hover{background:var(--gold-lt)}
 
 /* ═══════════════════════════════════════════════════
    ── INTRO SCREEN ──
@@ -1070,10 +1079,14 @@ canvas{display:block}
       <div class="interp-body" id="rInterp"></div>
     </div>
 
-    <div style="margin-top:24px;padding-top:20px;border-top:1px solid #e0ddd4;display:flex;gap:12px;justify-content:center;">
-      <button onclick="goToNext();" style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:10px 24px;background:#b09837;color:#fff;border:none;cursor:pointer;">Continue to Next Assessment</button>
-      <button onclick="returnToDashboard();" style="font-family:'Segoe UI',Arial,sans-serif;font-size:13px;font-weight:600;letter-spacing:0.08em;padding:10px 24px;background:#fff;color:#b09837;border:1.5px solid #b09837;cursor:pointer;">Return to Dashboard</button>
-    </div>
+    <div style="display: flex; gap: 16px; justify-content: center; margin-top: 40px;">
+    <button onclick="returnToDashboard()" class="btn-ghost">
+        ← Return to Dashboard
+    </button>
+    <button onclick="goToNextAssessment()" class="btn-primary">
+        Continue to Next Assessment →
+    </button>
+</div>
   </div>
 </div>
 
@@ -1082,6 +1095,75 @@ canvas{display:block}
      JAVASCRIPT
 ══════════════════════════════════════════ -->
 <script>
+// ===== AUTHENTICATION & NAVIGATION =====
+(function() {
+    // Get URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+    const assessmentId = urlParams.get('assessmentId');
+    const caseType = urlParams.get('caseType');
+    const currentTool = urlParams.get('tool');
+    
+    // If no session, redirect to login
+    if (!sessionId || !assessmentId) {
+        window.location.href = 'https://case-clarity-project-992q2ectn-tracis-projects-26fd65a2.vercel.app/login.html';
+        return;
+    }
+    
+    // Store in sessionStorage
+    sessionStorage.setItem('tool_session', sessionId);
+    sessionStorage.setItem('tool_assessment', assessmentId);
+    sessionStorage.setItem('tool_caseType', caseType);
+    sessionStorage.setItem('tool_name', currentTool);
+    
+    // Tool order for navigation
+    const TOOL_ORDER = ['CCI', 'CSA', 'CAF', 'HSI', 'FCI', 'RRF'];
+    const TOOL_URLS = {
+        'CCI': 'https://case-complexity-index-e0hdp2mvz-tracis-projects-26fd65a2.vercel.app',
+        'CSA': 'https://care-auditor-cvds0k5dx-tracis-projects-26fd65a2.vercel.app',
+        'CAF': 'https://care-access-friction-score-133sg5wgb-tracis-projects-26fd65a2.vercel.app',
+        'HSI': 'https://holistic-stability-index-1bbz5j5r7-tracis-projects-26fd65a2.vercel.app',
+        'FCI': 'https://fci-portal-clean-4jbc10zs1-tracis-projects-26fd65a2.vercel.app',
+        'RRF': 'https://recovery-risk-forecaster-n7s9o0uzm-tracis-projects-26fd65a2.vercel.app'
+    };
+    
+    const currentIndex = TOOL_ORDER.indexOf(currentTool);
+    const nextTool = TOOL_ORDER[currentIndex + 1]; // FCI for HSI
+    
+    // Mark assessment complete
+    window.markAssessmentComplete = async function(assessmentData) {
+        if (window.opener && !window.opener.closed) {
+            window.opener.postMessage({
+                type: 'ASSESSMENT_COMPLETE',
+                assessmentId: assessmentId,
+                caseType: caseType,
+                tool: currentTool,
+                data: assessmentData
+            }, '*');
+        }
+        sessionStorage.setItem(`${currentTool}_${caseType}_complete`, 'true');
+    };
+    
+    // Navigation functions
+    window.returnToDashboard = function() {
+        window.close();
+    };
+    
+    window.goToNextAssessment = function() {
+        if (nextTool) {
+            const nextUrl = new URL(TOOL_URLS[nextTool]);
+            nextUrl.searchParams.set('session', sessionId);
+            nextUrl.searchParams.set('assessmentId', assessmentId);
+            nextUrl.searchParams.set('caseType', caseType);
+            nextUrl.searchParams.set('tool', nextTool);
+            window.location.href = nextUrl.toString();
+        } else {
+            window.close();
+        }
+    };
+})();
+// ===== END AUTHENTICATION =====
+
 'use strict';
 
 // Read case type from portal launch URL (?caseType=active|closed)
@@ -2006,21 +2088,6 @@ window.addEventListener('resize',()=>{
 window.addEventListener('load',()=>{
   requestAnimationFrame(()=>requestAnimationFrame(drawMiniSlab));
 });
-
-function goToNext() {
-  if (window.opener && !window.opener.closed) {
-    window.opener.postMessage(
-      { type: 'GO_TO_NEXT_ASSESSMENT', instrument: 'HSI', caseType },
-      '*'
-    );
-    // Do NOT close this tab — portal needs to call window.open() for next tool
-    // before this context is destroyed. Portal will open the next tool.
-  }
-}
-function returnToDashboard() {
-  if (window.opener && !window.opener.closed) { window.opener.focus(); }
-  window.close();
-}
 </script>
 </body>
 </html>
