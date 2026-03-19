@@ -2218,6 +2218,42 @@ window.addEventListener('resize',()=>{
 window.addEventListener('load',()=>{
   requestAnimationFrame(()=>requestAnimationFrame(drawMiniSlab));
 });
+
+// Global wrappers — ensure buttons always work regardless of IIFE state
+function goToNextAssessment() {
+    var session = sessionStorage.getItem('tool_session');
+    var assessmentId = sessionStorage.getItem('tool_assessment');
+    var caseType = sessionStorage.getItem('tool_caseType') || 'active';
+    var TOOL_ORDER = ['CCI','CSA','CAF','HSI','FCI','RRF'];
+    var TOOL_URLS = {
+            'CCI': 'https://case-complexity-index-e0hdp2mvz-tracis-projects-26fd65a2.vercel.app',
+            'CSA': 'https://care-auditor-cvds0k5dx-tracis-projects-26fd65a2.vercel.app',
+            'CAF': 'https://care-access-friction-score-133sg5wgb-tracis-projects-26fd65a2.vercel.app',
+            'HSI': 'https://holistic-stability-index-1bbz5j5r7-tracis-projects-26fd65a2.vercel.app',
+            'FCI': 'https://fci-portal-clean-4jbc10zs1-tracis-projects-26fd65a2.vercel.app',
+            'RRF': 'https://recovery-risk-forecaster-n7s9o0uzm-tracis-projects-26fd65a2.vercel.app'
+        };
+    var currentTool = sessionStorage.getItem('tool_name') || 'HSI';
+    var currentIndex = TOOL_ORDER.indexOf(currentTool);
+    var nextTool = TOOL_ORDER[currentIndex + 1];
+    if (nextTool && TOOL_URLS[nextTool]) {
+        var nextUrl = new URL(TOOL_URLS[nextTool]);
+        nextUrl.searchParams.set('session', session);
+        nextUrl.searchParams.set('assessmentId', assessmentId);
+        nextUrl.searchParams.set('caseType', caseType);
+        nextUrl.searchParams.set('tool', nextTool);
+        window.open(nextUrl.toString(), '_blank');
+        window.close();
+    } else {
+        window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + session + '&assessmentId=' + assessmentId;
+    }
+}
+function returnToDashboard() {
+    var session = sessionStorage.getItem('tool_session');
+    var assessmentId = sessionStorage.getItem('tool_assessment');
+    window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + session + '&assessmentId=' + assessmentId;
+}
+
 </script>
 </body>
 </html>
