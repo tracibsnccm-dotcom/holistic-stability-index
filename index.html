@@ -1900,13 +1900,15 @@ function buildResults() {
     buildDestabResult(destab);
     buildInterp(intrinsic, pCode, extrinsic, destab);
 
-    // Notify Case Clarity portal that HSI is fully complete
-    if (window.opener && !window.opener.closed) {
-      // Notify Case Clarity portal that HSI is fully complete for the selected case type
-      window.opener.postMessage(
-        { type: 'INSTRUMENT_COMPLETE', instrument: 'HSI', caseType },
-        '*'
-      );
+    if (typeof window.markAssessmentComplete === 'function') {
+      window.markAssessmentComplete({
+        tool: 'HSI',
+        intrinsic,
+        extrinsic,
+        pCode,
+        destab,
+        completedAt: new Date().toISOString()
+      });
     }
   });
 }
