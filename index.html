@@ -1146,7 +1146,11 @@ canvas{display:block}
     
     // Navigation functions
     window.returnToDashboard = function() {
-        window.close();
+        if (window.opener && !window.opener.closed) {
+            window.close();
+        } else {
+            window.location.href = 'https://case-clarity-project-hkwi6pqyb-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + sessionId + '&assessmentId=' + assessmentId;
+        }
     };
     
     window.goToNextAssessment = function() {
@@ -1158,7 +1162,8 @@ canvas{display:block}
             nextUrl.searchParams.set('tool', nextTool);
             window.location.href = nextUrl.toString();
         } else {
-            window.close();
+            // Last tool — return to dashboard
+            window.location.href = 'https://case-clarity-project-hkwi6pqyb-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + sessionId + '&assessmentId=' + assessmentId;
         }
     };
 })();
