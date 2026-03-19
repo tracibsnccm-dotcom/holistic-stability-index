@@ -1218,7 +1218,8 @@ canvas{display:block}
             nextUrl.searchParams.set('assessmentId', assessmentId);
             nextUrl.searchParams.set('caseType', caseType);
             nextUrl.searchParams.set('tool', nextTool);
-            window.location.href = nextUrl.toString();
+            window.open(nextUrl.toString(), '_blank');
+            window.close();
         } else {
             // Last tool — return to dashboard
             window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + sessionId + '&assessmentId=' + assessmentId;
