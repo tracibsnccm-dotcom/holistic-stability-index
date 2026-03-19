@@ -1153,6 +1153,86 @@ canvas{display:block}
      JAVASCRIPT
 ══════════════════════════════════════════ -->
 <script>
+// ===== AUTHENTICATION & NAVIGATION =====
+(function() {
+    const DASHBOARD_URL = 'https://case-clarity-project-hkwi6pqyb-tracis-projects-26fd65a2.vercel.app/dashboard.html';
+    const urlParams = new URLSearchParams(window.location.search);
+    const sessionId = urlParams.get('session');
+    const assessmentId = urlParams.get('assessmentId');
+    const caseType = urlParams.get('caseType') || '';
+    const currentTool = urlParams.get('tool');
+
+    const TOOL_ORDER = ['CCI', 'CSA', 'CAF', 'HSI', 'FCI', 'RRF'];
+    const TOOL_URLS = {
+        'CCI': 'https://case-complexity-index-e0hdp2mvz-tracis-projects-26fd65a2.vercel.app',
+        'CSA': 'https://care-auditor-cvds0k5dx-tracis-projects-26fd65a2.vercel.app',
+        'CAF': 'https://care-access-friction-score-133sg5wgb-tracis-projects-26fd65a2.vercel.app',
+        'HSI': 'https://holistic-stability-index-1bbz5j5r7-tracis-projects-26fd65a2.vercel.app',
+        'FCI': 'https://fci-portal-clean-4jbc10zs1-tracis-projects-26fd65a2.vercel.app',
+        'RRF': 'https://recovery-risk-forecaster-n7s9o0uzm-tracis-projects-26fd65a2.vercel.app'
+    };
+
+    const effectiveTool = (currentTool && TOOL_ORDER.includes(currentTool)) ? currentTool : 'HSI';
+    const currentIndex = TOOL_ORDER.indexOf(effectiveTool);
+    const nextTool = TOOL_ORDER[currentIndex + 1];
+    const hasDashboardContext = !!(sessionId && assessmentId);
+
+    if (hasDashboardContext) {
+        sessionStorage.setItem('tool_session', sessionId);
+        sessionStorage.setItem('tool_assessment', assessmentId);
+        sessionStorage.setItem('tool_caseType', caseType);
+        sessionStorage.setItem('tool_name', effectiveTool);
+    }
+
+    function dashboardHref() {
+        if (!hasDashboardContext) return DASHBOARD_URL;
+        return DASHBOARD_URL + '?' + new URLSearchParams({ session: sessionId, assessmentId }).toString();
+    }
+
+    function buildNextToolUrl(toolKey) {
+        const nextUrl = new URL(TOOL_URLS[toolKey]);
+        nextUrl.searchParams.set('tool', toolKey);
+        if (hasDashboardContext) {
+            nextUrl.searchParams.set('session', sessionId);
+            nextUrl.searchParams.set('assessmentId', assessmentId);
+            if (caseType) nextUrl.searchParams.set('caseType', caseType);
+        }
+        return nextUrl.toString();
+    }
+
+    window.markAssessmentComplete = async function(assessmentData) {
+        try {
+            if (window.opener && !window.opener.closed) {
+                window.opener.postMessage({
+                    type: 'ASSESSMENT_COMPLETE',
+                    assessmentId,
+                    caseType,
+                    tool: effectiveTool,
+                    data: assessmentData
+                }, '*');
+            }
+        } catch(e) {}
+        if (hasDashboardContext) {
+            sessionStorage.setItem(effectiveTool + '_' + (caseType || 'default') + '_complete', 'true');
+        }
+    };
+
+    window.returnToDashboard = function() {
+        try {
+            if (window.opener && !window.opener.closed) window.opener.postMessage({ type: 'FOCUS_DASHBOARD' }, '*');
+        } catch(e) {}
+        window.location.href = dashboardHref();
+    };
+
+    window.goToNextAssessment = function() {
+        if (nextTool && TOOL_URLS[nextTool]) {
+            window.location.href = buildNextToolUrl(nextTool);
+            return;
+        }
+        document.getElementById('sc-results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+})();
+// ===== END AUTHENTICATION =====
 
 'use strict';
 
