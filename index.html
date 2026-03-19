@@ -873,6 +873,64 @@ canvas{display:block}
   .slab-card{padding:24px 16px}
   .destab-card-r,.interp-card{padding:24px 18px}
 }
+  /* ── Collapsible domain sections ── */
+  .domain-section {
+    border: 1.5px solid var(--border);
+    border-radius: var(--r);
+    margin-bottom: 16px;
+    overflow: hidden;
+  }
+  .domain-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    cursor: pointer;
+    background: var(--white);
+    user-select: none;
+  }
+  .domain-section-header:hover { background: var(--gold-pale); }
+  .domain-section-header.open { border-bottom: 1.5px solid var(--border); }
+  .domain-section-title {
+    font-family: var(--font-display);
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--black);
+  }
+  .domain-section-badge {
+    font-family: var(--font-ui);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--gray-mid);
+  }
+  .domain-section-status {
+    font-family: var(--font-ui);
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 10px;
+    border-radius: 99px;
+    background: var(--surf-line);
+    color: var(--gray-mid);
+  }
+  .domain-section-status.complete {
+    background: #e6f4ea;
+    color: #1a6e2e;
+  }
+  .domain-section-arrow {
+    font-size: 12px;
+    color: var(--gray-mid);
+    transition: transform 0.2s;
+  }
+  .domain-section-arrow.open { transform: rotate(180deg); }
+  .domain-section-body {
+    display: none;
+    padding: 20px;
+    background: var(--surface);
+  }
+  .domain-section-body.open { display: block; }
+
 </style>
 </head>
 <body>
@@ -1477,13 +1535,22 @@ function startAssessment() {
 ───────────────────────────────────────────────────────── */
 function navNext() {
   if (step<=3) {
-    // Grouped view: all 5 questions shown at once — validate all answered
-    const unanswered = DOMAINS[step].questions.findIndex((_, qi) => A[step][qi] === undefined);
-    if (unanswered !== -1) {
-      toast(`Please answer all questions for ${DOMAINS[step].title} before continuing.`);
-      return;
+    // All 4 domains shown at once — validate ALL before advancing
+    for (let di = 0; di < DOMAINS.length; di++) {
+      const unanswered = DOMAINS[di].questions.findIndex((_, qi) => A[di][qi] === undefined);
+      if (unanswered !== -1) {
+        toast(`Please answer all questions for ${DOMAINS[di].title} before continuing.`);
+        // Auto-open that domain section
+        const body  = document.getElementById(`dom-body-${di}`);
+        const arrow = document.getElementById(`dom-arrow-${di}`);
+        if (body && !body.classList.contains('open')) {
+          body.classList.add('open');
+          if (arrow) arrow.style.transform = 'rotate(180deg)';
+        }
+        return;
+      }
     }
-    step++;
+    step = 4; // Jump straight to Social Drivers
   } else if (step===4) {
     for (let i=0;i<SOCIAL_DRIVERS.length;i++) {
       if (A[4][i]===undefined) { toast('Please rate all Social Drivers before continuing.'); return; }
@@ -1501,9 +1568,9 @@ function navNext() {
 
 function navBack() {
   if (step===0) { showScreen('sc-intro'); return; }
-  if (step<=3) { step--; }
-  else if (step===4) { step=3; }
-  else if (step===5) { step=4; }
+  if (step<=3) { step = 0; } // stay on domains screen
+  else if (step===4) { step = 0; } // back to all domains
+  else if (step===5) { step = 4; }
   render();
   window.scrollTo({top:0});
 }
@@ -1528,22 +1595,25 @@ function render() {
   const isLast = step===5;
   document.getElementById('btnNext').textContent = isLast ? 'View Results →' : 'Continue →';
 
-  if      (step<=3) renderQuestion();
+  if      (step<=3) renderAllDomains();
   else if (step===4) renderDrivers();
   else              renderDestab();
 }
 
 /* Sidebar */
 function updateSidebar() {
-  const labels=['P1 — Physical Wellness','P2 — Psychological Wellness','P3 — Psychosocial Wellness','P4 — Professional Wellness','Social Drivers of Health','Clinical Destabilizers'];
+  const labels=['4Ps of Wellness','Social Drivers of Health','Clinical Destabilizers'];
+  const stepIdx = step <= 3 ? 0 : step - 3;
   document.getElementById('sbSteps').innerHTML = labels.map((l,i)=>`
-    <div class="sb-step ${i===step?'active':i<step?'done':''}">
+    <div class="sb-step ${i===stepIdx?'active':i<stepIdx?'done':''}">
       <span class="sb-pip"></span>${l}
     </div>`).join('');
 }
 
 function updatePill() {
-  const labels=['P1 of 4','P2 of 4','P3 of 4','P4 of 4','Social Drivers','Destabilizers'];
+  const labels = ['4Ps Assessment', '4Ps Assessment', '4Ps Assessment', '4Ps Assessment', 'Social Drivers', 'Destabilizers'];
+  document.getElementById('assessPill').textContent = labels[step] || '';
+}ers','Destabilizers'];
   document.getElementById('assessPill').textContent = labels[step]||'';
 }
 
@@ -1551,53 +1621,107 @@ function updatePill() {
    RENDER DOMAIN — all questions grouped under one P section
 ───────────────────────────────────────────────────────── */
 function renderQuestion() {
-  const dom = DOMAINS[step];
-  const stg = STAGES[dom.key];
+  renderAllDomains();
+}
 
-  const safeguard = (step === 0) ? `
-    <div class="safeguard">
-      If more than one stage appears applicable, select the lowest stage that reflects the individual's current condition. The lowest domain score determines overall intrinsic stability.
-    </div>` : '';
+function renderAllDomains() {
+  const sectionsHtml = DOMAINS.map((dom, di) => {
+    const stg = STAGES[dom.key];
+    const allAnswered = dom.questions.every((_, qi) => A[di][qi] !== undefined);
+    const anyAnswered = dom.questions.some((_, qi) => A[di][qi] !== undefined);
+    const isOpen = !allAnswered; // start open if not yet complete
 
-  // Build one block per question in this domain
-  const questionsHtml = dom.questions.map((q, qi) => {
-    const saved = A[step][qi];
-    const optsHtml = stg.map(s => {
-      const buls = s.bullets.map(b => `<li>${b}</li>`).join('');
+    const questionsHtml = dom.questions.map((q, qi) => {
+      const saved = A[di][qi];
+      const optsHtml = stg.map(s => {
+        const buls = s.bullets.map(b => `<li>${b}</li>`).join('');
+        return `
+        <div class="stage-opt${saved === s.v ? ' sel' : ''}"
+             onclick="pickDomainStage(${s.v}, this, ${di}, ${qi})">
+          <div class="stage-num">${s.v}</div>
+          <div class="stage-lbl">${s.label}</div>
+          <button class="stage-info-btn" onclick="toggleStageDesc(event,'sid-${di}-${qi}-${s.v}')" title="View stage description">i</button>
+          <div class="stage-radio"><div class="radio-ring"><div class="radio-dot"></div></div></div>
+        </div>
+        <div class="stage-inline-desc" id="sid-${di}-${qi}-${s.v}">
+          <ul>${buls}</ul>
+        </div>`;
+      }).join('');
+
       return `
-      <div class="stage-opt${saved === s.v ? ' sel' : ''}"
-           onclick="pickStageGrouped(${s.v}, this, ${qi})">
-        <div class="stage-num">${s.v}</div>
-        <div class="stage-lbl">${s.label}</div>
-        <button class="stage-info-btn" onclick="toggleStageDesc(event,'sid-${step}-${qi}-${s.v}')" title="View stage description">i</button>
-        <div class="stage-radio"><div class="radio-ring"><div class="radio-dot"></div></div></div>
-      </div>
-      <div class="stage-inline-desc" id="sid-${step}-${qi}-${s.v}">
-        <ul>${buls}</ul>
+      <div class="q-view" style="margin-bottom:28px;padding-bottom:24px;border-bottom:1px solid var(--surf-line);">
+        <div class="q-num">Question ${qi + 1} of ${dom.questions.length}</div>
+        <div class="q-title">${q.title}</div>
+        <div class="q-text">${q.text}</div>
+        <div class="stage-opts" id="domOpts-${di}-${qi}">${optsHtml}</div>
       </div>`;
     }).join('');
 
     return `
-    <div class="q-view" style="margin-bottom:32px; padding-bottom:28px; border-bottom:1px solid var(--surf-line);">
-      <div class="q-num">Question ${qi + 1} of ${dom.questions.length}</div>
-      <div class="q-title">${q.title}</div>
-      <div class="q-text">${q.text}</div>
-      <div class="stage-opts" id="stageOpts-${qi}">${optsHtml}</div>
+    <div class="domain-section" id="dom-section-${di}">
+      <div class="domain-section-header${isOpen ? '' : '' }" onclick="toggleDomainSection(${di})">
+        <div>
+          <div class="domain-section-badge">${dom.badge}</div>
+          <div class="domain-section-title">${dom.title}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:12px;">
+          <div class="domain-section-status${allAnswered ? ' complete' : ''}">${allAnswered ? 'Complete' : anyAnswered ? 'In Progress' : 'Not Started'}</div>
+          <span class="domain-section-arrow${isOpen ? '' : ''}" id="dom-arrow-${di}">▾</span>
+        </div>
+      </div>
+      <div class="domain-section-body${isOpen ? ' open' : ''}" id="dom-body-${di}">
+        ${di === 0 ? '<div class="safeguard">If more than one stage appears applicable, select the lowest stage that reflects the individual's current condition. The lowest domain score determines overall intrinsic stability.</div>' : ''}
+        ${questionsHtml}
+      </div>
     </div>`;
   }).join('');
 
   document.getElementById('assessContent').innerHTML = `
-    <div class="d-header">
-      <div class="d-badge">${dom.badge}</div>
-      <div class="d-title">${dom.title}</div>
-      <div class="d-progress">
-        <span>All ${dom.questions.length} questions</span>
-        <div class="d-pbar"><div class="d-pfill" style="width:${Math.round((step/4)*100)}%"></div></div>
-        <span>Step ${step + 1} of 4</span>
-      </div>
+    <div class="d-header" style="margin-bottom:24px;">
+      <div class="d-badge">4Ps of Wellness Assessment</div>
+      <div class="d-title">Rate each domain below</div>
+      <div style="font-size:13px;color:var(--gray-mid);margin-top:4px;">Expand each section, answer all questions, then click Continue.</div>
     </div>
-    ${safeguard}
-    ${questionsHtml}`;
+    ${sectionsHtml}`;
+}
+
+function toggleDomainSection(di) {
+  const body  = document.getElementById(`dom-body-${di}`);
+  const arrow = document.getElementById(`dom-arrow-${di}`);
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  if (arrow) arrow.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+function pickDomainStage(val, el, di, qi) {
+  A[di][qi] = val;
+  const opts = document.getElementById(`domOpts-${di}-${qi}`);
+  if (opts) opts.querySelectorAll('.stage-opt').forEach(o => o.classList.remove('sel'));
+  const opt = el.closest('.stage-opt') || el;
+  opt.classList.add('sel');
+  // Update section status
+  const dom = DOMAINS[di];
+  const allAnswered = dom.questions.every((_, q) => A[di][q] !== undefined);
+  const anyAnswered = dom.questions.some((_, q) => A[di][q] !== undefined);
+  const statusEl = document.querySelector(`#dom-section-${di} .domain-section-status`);
+  if (statusEl) {
+    statusEl.textContent = allAnswered ? 'Complete' : anyAnswered ? 'In Progress' : 'Not Started';
+    statusEl.className = 'domain-section-status' + (allAnswered ? ' complete' : '');
+    if (allAnswered) {
+      // Auto-collapse completed section and open next if available
+      const body = document.getElementById(`dom-body-${di}`);
+      const arrow = document.getElementById(`dom-arrow-${di}`);
+      if (body) body.classList.remove('open');
+      if (arrow) arrow.style.transform = '';
+      if (di < DOMAINS.length - 1) {
+        const nextBody  = document.getElementById(`dom-body-${di + 1}`);
+        const nextArrow = document.getElementById(`dom-arrow-${di + 1}`);
+        if (nextBody) nextBody.classList.add('open');
+        if (nextArrow) nextArrow.style.transform = 'rotate(180deg)';
+      }
+    }
+  }
 }
 
 function pickStageGrouped(val, el, qi) {
