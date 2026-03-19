@@ -1153,80 +1153,6 @@ canvas{display:block}
      JAVASCRIPT
 ══════════════════════════════════════════ -->
 <script>
-// ===== AUTHENTICATION & NAVIGATION =====
-(function() {
-    // Get URL parameters
-    const urlParams = new URLSearchParams(window.location.search);
-    const sessionId = urlParams.get('session');
-    const assessmentId = urlParams.get('assessmentId');
-    const caseType = urlParams.get('caseType');
-    const currentTool = urlParams.get('tool');
-    
-    // If no session, redirect to login
-    if (!sessionId || !assessmentId) {
-        window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html';
-        return;
-    }
-    
-    // Store in sessionStorage
-    sessionStorage.setItem('tool_session', sessionId);
-    sessionStorage.setItem('tool_assessment', assessmentId);
-    sessionStorage.setItem('tool_caseType', caseType);
-    sessionStorage.setItem('tool_name', currentTool);
-    
-    // Tool order for navigation
-    const TOOL_ORDER = ['CCI', 'CSA', 'CAF', 'HSI', 'FCI', 'RRF'];
-    const TOOL_URLS = {
-        'CCI': 'https://case-complexity-index-e0hdp2mvz-tracis-projects-26fd65a2.vercel.app',
-        'CSA': 'https://care-auditor-cvds0k5dx-tracis-projects-26fd65a2.vercel.app',
-        'CAF': 'https://care-access-friction-score-133sg5wgb-tracis-projects-26fd65a2.vercel.app',
-        'HSI': 'https://holistic-stability-index-1bbz5j5r7-tracis-projects-26fd65a2.vercel.app',
-        'FCI': 'https://fci-portal-clean-4jbc10zs1-tracis-projects-26fd65a2.vercel.app',
-        'RRF': 'https://recovery-risk-forecaster-n7s9o0uzm-tracis-projects-26fd65a2.vercel.app'
-    };
-    
-    const currentIndex = TOOL_ORDER.indexOf(currentTool);
-    const nextTool = TOOL_ORDER[currentIndex + 1]; // FCI for HSI
-    
-    // Mark assessment complete
-    window.markAssessmentComplete = async function(assessmentData) {
-        if (window.opener && !window.opener.closed) {
-            window.opener.postMessage({
-                type: 'ASSESSMENT_COMPLETE',
-                assessmentId: assessmentId,
-                caseType: caseType,
-                tool: currentTool,
-                data: assessmentData
-            }, '*');
-        }
-        sessionStorage.setItem(`${currentTool}_${caseType}_complete`, 'true');
-    };
-    
-    // Navigation functions
-    window.returnToDashboard = function() {
-        if (window.opener && !window.opener.closed) {
-            window.close();
-        } else {
-            window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + sessionId + '&assessmentId=' + assessmentId;
-        }
-    };
-    
-    window.goToNextAssessment = function() {
-        if (nextTool) {
-            const nextUrl = new URL(TOOL_URLS[nextTool]);
-            nextUrl.searchParams.set('session', sessionId);
-            nextUrl.searchParams.set('assessmentId', assessmentId);
-            nextUrl.searchParams.set('caseType', caseType);
-            nextUrl.searchParams.set('tool', nextTool);
-            window.open(nextUrl.toString(), '_blank');
-            window.close();
-        } else {
-            // Last tool — return to dashboard
-            window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + sessionId + '&assessmentId=' + assessmentId;
-        }
-    };
-})();
-// ===== END AUTHENTICATION =====
 
 'use strict';
 
@@ -2219,40 +2145,74 @@ window.addEventListener('load',()=>{
   requestAnimationFrame(()=>requestAnimationFrame(drawMiniSlab));
 });
 
-// Global wrappers — ensure buttons always work regardless of IIFE state
-function goToNextAssessment() {
-    var session = sessionStorage.getItem('tool_session');
-    var assessmentId = sessionStorage.getItem('tool_assessment');
-    var caseType = sessionStorage.getItem('tool_caseType') || 'active';
-    var TOOL_ORDER = ['CCI','CSA','CAF','HSI','FCI','RRF'];
-    var TOOL_URLS = {
-            'CCI': 'https://case-complexity-index-e0hdp2mvz-tracis-projects-26fd65a2.vercel.app',
-            'CSA': 'https://care-auditor-cvds0k5dx-tracis-projects-26fd65a2.vercel.app',
-            'CAF': 'https://care-access-friction-score-133sg5wgb-tracis-projects-26fd65a2.vercel.app',
-            'HSI': 'https://holistic-stability-index-1bbz5j5r7-tracis-projects-26fd65a2.vercel.app',
-            'FCI': 'https://fci-portal-clean-4jbc10zs1-tracis-projects-26fd65a2.vercel.app',
-            'RRF': 'https://recovery-risk-forecaster-n7s9o0uzm-tracis-projects-26fd65a2.vercel.app'
+
+
+// ===== CASE CLARITY NAVIGATION — HSI =====
+(function() {
+    var urlParams    = new URLSearchParams(window.location.search);
+    var sessionId    = urlParams.get('session')    || sessionStorage.getItem('tool_session');
+    var assessmentId = urlParams.get('assessmentId') || sessionStorage.getItem('tool_assessment');
+    var caseType     = urlParams.get('caseType')   || sessionStorage.getItem('tool_caseType') || 'active';
+    var currentTool  = urlParams.get('tool')       || 'HSI';
+
+    if (sessionId)    sessionStorage.setItem('tool_session', sessionId);
+    if (assessmentId) sessionStorage.setItem('tool_assessment', assessmentId);
+    if (caseType)     sessionStorage.setItem('tool_caseType', caseType);
+    sessionStorage.setItem('tool_name', currentTool);
+
+    var TOOL_ORDER = ["CCI", "CSA", "CAF", "HSI", "FCI", "RRF"];
+    var TOOL_URLS  = {
+        "CCI": "https://case-complexity-index-e0hdp2mvz-tracis-projects-26fd65a2.vercel.app",
+        "CSA": "https://care-auditor-cvds0k5dx-tracis-projects-26fd65a2.vercel.app",
+        "CAF": "https://care-access-friction-score-133sg5wgb-tracis-projects-26fd65a2.vercel.app",
+        "HSI": "https://holistic-stability-index-1bbz5j5r7-tracis-projects-26fd65a2.vercel.app",
+        "FCI": "https://fci-portal-clean-4jbc10zs1-tracis-projects-26fd65a2.vercel.app",
+        "RRF": "https://recovery-risk-forecaster-n7s9o0uzm-tracis-projects-26fd65a2.vercel.app"
+};
+
+    window._ccSession    = sessionId;
+    window._ccAssessment = assessmentId;
+    window._ccCaseType   = caseType;
+    window._ccTool       = currentTool;
+
+    window.markAssessmentComplete = function(assessmentData) {
+        var msg = {
+            type:         'ASSESSMENT_COMPLETE',
+            assessmentId: assessmentId,
+            caseType:     caseType,
+            tool:         currentTool,
+            data:         assessmentData || {}
         };
-    var currentTool = sessionStorage.getItem('tool_name') || 'HSI';
-    var currentIndex = TOOL_ORDER.indexOf(currentTool);
-    var nextTool = TOOL_ORDER[currentIndex + 1];
-    if (nextTool && TOOL_URLS[nextTool]) {
-        var nextUrl = new URL(TOOL_URLS[nextTool]);
-        nextUrl.searchParams.set('session', session);
-        nextUrl.searchParams.set('assessmentId', assessmentId);
-        nextUrl.searchParams.set('caseType', caseType);
-        nextUrl.searchParams.set('tool', nextTool);
-        window.open(nextUrl.toString(), '_blank');
-        window.close();
-    } else {
-        window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + session + '&assessmentId=' + assessmentId;
-    }
-}
-function returnToDashboard() {
-    var session = sessionStorage.getItem('tool_session');
-    var assessmentId = sessionStorage.getItem('tool_assessment');
-    window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + session + '&assessmentId=' + assessmentId;
-}
+        try { if (window.opener && !window.opener.closed) window.opener.postMessage(msg, '*'); } catch(e) {}
+        try { if (window.parent && window.parent !== window) window.parent.postMessage(msg, '*'); } catch(e) {}
+    };
+
+    window.goToNextAssessment = function() {
+        var nextTool = TOOL_ORDER[TOOL_ORDER.indexOf(currentTool) + 1];
+        if (nextTool && TOOL_URLS[nextTool]) {
+            var nextUrl = new URL(TOOL_URLS[nextTool]);
+            nextUrl.searchParams.set('session', sessionId);
+            nextUrl.searchParams.set('assessmentId', assessmentId);
+            nextUrl.searchParams.set('caseType', caseType);
+            nextUrl.searchParams.set('tool', nextTool);
+            window.open(nextUrl.toString(), '_blank');
+            window.close();
+        } else {
+            window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + sessionId + '&assessmentId=' + assessmentId;
+        }
+    };
+
+    window.returnToDashboard = function() {
+        if (window.opener && !window.opener.closed) {
+            window.opener.focus();
+            window.close();
+        } else {
+            window.location.href = 'https://case-clarity-project-mt0wcyyo7-tracis-projects-26fd65a2.vercel.app/dashboard.html?session=' + sessionId + '&assessmentId=' + assessmentId;
+        }
+    };
+
+})();
+// ===== END CASE CLARITY NAVIGATION =====
 
 </script>
 </body>
